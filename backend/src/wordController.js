@@ -1,11 +1,20 @@
 const Word = require("./models");
 
 // ===============================
-// GET ALL WORDS
+// GET ALL WORDS (Supports ?category= filter)
 // ===============================
 const getWords = async (req, res) => {
   try {
-    const words = await Word.find().sort({ createdAt: 1 });
+    const { category } = req.query;
+    let query = {};
+
+    if (category && typeof category === "string") {
+      const trimmed = category.trim();
+      // Case-insensitive exact match regex
+      query.category = { $regex: new RegExp(`^${trimmed}$`, "i") };
+    }
+
+    const words = await Word.find(query).sort({ createdAt: 1 }).lean();
 
     res.status(200).json({
       success: true,

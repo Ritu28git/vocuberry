@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_BASE_URL } from "../../config/api";
 
 function AddCategory() {
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ function AddCategory() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/categories",
+        `${API_BASE_URL}/api/categories`,
         {
           method: "POST",
           headers: {

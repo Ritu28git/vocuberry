@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Heart, Volume2, Search } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 
 function WordLearning() {
   const { category: slug } = useParams();
   const navigate = useNavigate();
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [favourites, setFavourites] = useState([]);
   const [voices, setVoices] = useState([]);
@@ -16,155 +18,134 @@ function WordLearning() {
 
   const categoryMap = {
     "daily-use": "Daily Use Words",
+    "daily-use-words": "Daily Use Words",
     "say-it-better": "Say It Better",
-   "tongue-twister": "Tongue Twisters",
+    "tongue-twister": "Tongue Twisters",
+    "tongue-twisters": "Tongue Twisters",
     "think-express": "Think & Express",
+    "think-and-express": "Think & Express",
     "social-situations": "Social Situations",
     "emoji-words": "Emoji Words",
     "cooking-actions": "Cooking Actions",
-    "cooking-tools": "Cooking Tools",
+    "cooking-tools": "Kitchen Tools",
     "kitchen-tools": "Kitchen Tools",
     "spices-seasonings": "Spices & Seasonings",
+    "spices-and-seasonings": "Spices & Seasonings",
     "food-ingredients": "Food & Ingredients",
     "restaurant-talk": "Restaurant Talk",
     "shopping-talk": "Shopping Talk",
     "clothing-actions": "Clothing Actions",
     "style-appearance": "Style & Appearance",
+    "style-and-appearance": "Style & Appearance",
     "beauty-personal-care": "Beauty & Personal Care",
     "cleaning-actions": "Cleaning Actions",
     "movement-words": "Movement Words",
     "seeing-looking": "Seeing & Looking",
+    "seeing-and-looking": "Seeing & Looking",
     "sounds-listening": "Sounds & Listening",
+    "sounds-and-listening": "Sounds & Listening",
     "touch-handling": "Touch & Handling",
+    "touch-and-handling": "Touch & Handling",
     "speaking-actions": "Speaking Actions",
     "reaction-words": "Reaction Words",
     "relationship-actions": "Relationship Actions",
     "creative-actions": "Creative Actions",
     "study-actions": "Study Actions",
-     "business": "Business",
-     "travel": "Travel",
+    "business": "Business",
+    "travel": "Travel",
     "emotions": "Emotion Words",
-   "power-words": "Power Words",
-   "beautiful-words": "Beautiful Words",
-   "cool-slang": "Cool Slang",
-   "people-personality": "People & Personality",
+    "emotion-words": "Emotion Words",
+    "power-words": "Power Words",
+    "beautiful-words": "Beautiful Words",
+    "cool-slang": "Cool Slang",
+    "people-personality": "People & Personality",
+    "people-and-personality": "People & Personality",
     "idioms": "Idioms",
+    "vocabulary": "Vocabulary",
   };
 
   // ========================================
-  // FETCH WORDS
+  // NORMALIZE CATEGORY HELPER
   // ========================================
+  const normalizeCategory = (value) => {
+    if (!value) return "";
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/&/g, " ")
+      .replace(/\band\b/g, " ")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
 
   // ========================================
-// FETCH ALL WORDS FROM MONGODB
-// ========================================
-
-useEffect(() => {
+  // FETCH WORDS FROM BACKEND
+  // ========================================
   const fetchWords = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      const response = await fetch(
-        "http://localhost:5000/api/words"
-      );
-
-      const data = await response.json();
-
-      console.log("ALL WORDS FROM MONGODB:", data);
-
-      if (!response.ok) {
-        console.error("Failed to fetch words:", data);
-        setWords([]);
-        return;
-      }
-
-      // All words from MongoDB
-     const allWords = data.words || [];
-
-console.log(
-  "ALL CATEGORY NAMES IN DATABASE:",
-  [...new Set(allWords.map((item) => item.category))]
-);
-
-      // Current category name
       const categoryName = categoryMap[slug] || slug;
 
-      console.log("Current slug:", slug);
-      console.log("Looking for category:", categoryName);
+      // 1. Fast path: query backend directly by category
+      let categoryWords = [];
+      try {
+        const queryUrl = `${API_BASE_URL}/api/words?category=${encodeURIComponent(categoryName)}`;
+        const response = await fetch(queryUrl);
+        if (response.ok) {
+          const data = await response.json();
+          categoryWords = data.words || [];
+        }
+      } catch (err) {
+        console.warn("Direct category fetch failed, trying fallback:", err);
+      }
 
- 
-// FILTER WORDS BY CATEGORY
-const normalizeCategory = (value) => {
-  if (!value) return "";
+      // 2. Fallback: fetch all words and match using normalization
+      if (categoryWords.length === 0) {
+        const response = await fetch(`${API_BASE_URL}/api/words`);
+        if (!response.ok) {
+          throw new Error(`Server responded with HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        const allWords = data.words || [];
 
-  return String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-};
+        const targetCategory = normalizeCategory(categoryName);
+        const targetSlug = normalizeCategory(slug);
 
-const targetCategory = normalizeCategory(categoryName);
+        categoryWords = allWords.filter((item) => {
+          let itemCategory = "";
+          if (typeof item.category === "string") {
+            itemCategory = item.category;
+          } else if (item.category?.name) {
+            itemCategory = item.category.name;
+          }
 
-console.log("=================================");
-console.log("SLUG:", slug);
-console.log("TARGET CATEGORY:", categoryName);
-console.log("TARGET CATEGORY NORMALIZED:", targetCategory);
-
-const categoryWords = allWords.filter((item) => {
-  let itemCategory = "";
-
-  if (typeof item.category === "string") {
-    itemCategory = item.category;
-  } else if (item.category?.name) {
-    itemCategory = item.category.name;
-  } else if (item.category?.title) {
-    itemCategory = item.category.title;
-  } else if (item.category?.categoryName) {
-    itemCategory = item.category.categoryName;
-  }
-
-  const normalizedItemCategory =
-    normalizeCategory(itemCategory);
-
-  return (
-    normalizedItemCategory === targetCategory
-  );
-});
-
-console.log(
-  `FOUND ${categoryWords.length} WORDS FOR:`,
-  categoryName
-);
-
-console.log(
-  "MATCHED CATEGORIES:",
-  [...new Set(
-    categoryWords.map((item) => item.category)
-  )]
-);
-console.log("=================================");
-
-      console.log(
-        `Words found for ${categoryName}:`,
-        categoryWords.length
-      );
+          const normItem = normalizeCategory(itemCategory);
+          return (
+            normItem === targetCategory ||
+            normItem === targetSlug ||
+            normItem.replace(/-words$/, "") === targetCategory.replace(/-words$/, "") ||
+            normItem.replace(/-words$/, "") === targetSlug.replace(/-words$/, "")
+          );
+        });
+      }
 
       setWords(categoryWords);
-
-    } catch (error) {
-      console.error("FETCH WORDS ERROR:", error);
+    } catch (err) {
+      console.error("FETCH WORDS ERROR:", err);
+      setError("Unable to connect to the backend server. Please check your network or server connection.");
       setWords([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (slug) {
-    fetchWords();
-  }
-}, [slug]);
+  useEffect(() => {
+    if (slug) {
+      fetchWords();
+    }
+  }, [slug]);
 
   // ========================================
   // LOAD FAVOURITES
@@ -414,14 +395,39 @@ const speakHindi = (text) => {
   }, [words, searchTerm]);
 
   // ========================================
-  // LOADING
+  // ERROR STATE
+  // ========================================
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#080814] px-4 text-white">
+        <div className="max-w-md rounded-2xl border border-red-500/20 bg-red-500/10 p-8 text-center backdrop-blur-xl">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/20 text-xl text-red-400">
+            ⚠
+          </div>
+          <h2 className="text-xl font-bold text-red-400">Failed to Load Words</h2>
+          <p className="mt-2 text-sm text-gray-300">{error}</p>
+          <button
+            onClick={fetchWords}
+            className="mt-6 rounded-xl bg-purple-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================
+  // LOADING STATE
   // ========================================
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#080814] text-white">
-        <div className="text-purple-400">
-          Loading vocabulary...
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#080814] text-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-500/20 border-t-purple-500" />
+        <div className="mt-4 text-sm text-purple-300">
+          Loading vocabulary words...
         </div>
       </div>
     );
@@ -593,9 +599,32 @@ const speakHindi = (text) => {
               bg-white/[0.02]
               py-16
               text-center
-              text-gray-500
+              text-gray-400
             ">
-              No words found.
+              <p className="text-lg font-medium text-gray-300">
+                {searchTerm
+                  ? `No words found matching "${searchTerm}"`
+                  : `No words found for ${categoryTitle}.`}
+              </p>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="
+                    mt-4
+                    rounded-xl
+                    border border-white/10
+                    bg-white/5
+                    px-4
+                    py-2
+                    text-sm
+                    text-purple-400
+                    transition
+                    hover:bg-white/10
+                  "
+                >
+                  Clear Search
+                </button>
+              )}
             </div>
 
           ) : (

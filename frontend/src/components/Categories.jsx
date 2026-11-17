@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../config/api";
 import {
   MessageCircle,
   ChefHat,
@@ -150,6 +152,7 @@ const iconMap = {
 // ===============================
 
 function Categories() {
+  const navigate = useNavigate();
   const [categories, setCategories] = React.useState([]);
 
   // ===============================
@@ -157,7 +160,7 @@ function Categories() {
   // ===============================
 
   React.useEffect(() => {
-    fetch("http://localhost:5000/api/categories")
+    fetch(`${API_BASE_URL}/api/categories`)
       .then((res) => res.json())
       .then((data) => {
         console.log("Categories from MongoDB:", data);
@@ -199,6 +202,7 @@ function Categories() {
           </div>
 
           <button
+            onClick={() => navigate("/categories")}
             className="
               hidden
               text-sm

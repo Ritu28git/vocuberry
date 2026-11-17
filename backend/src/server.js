@@ -7,26 +7,35 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (
+        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
   })
 );
 
 app.use(express.json());
 
-
 const routes = require("./routes");
 
-console.log("ROUTES TYPE:", typeof routes);
-
 app.use("/api", routes);
+
+const PORT = process.env.PORT || 5000;
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("MongoDB connected successfully ✅");
 
-    app.listen(5000, () => {
-      console.log("Server running on http://localhost:5000 🚀");
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT} 🚀`);
     });
   })
   .catch((error) => {

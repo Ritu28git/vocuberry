@@ -1,14 +1,23 @@
 import React from "react";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 function CategoryCard({ category }) {
+  const navigate = useNavigate();
   if (!category) return null;
 
   const Icon = category.icon;
 
+  const handleClick = () => {
+    if (category.slug) {
+      navigate(`/learn/${category.slug}`);
+    }
+  };
+
   return (
     <motion.div
+      onClick={handleClick}
       whileHover={{ y: -6, scale: 1.02 }}
       transition={{ duration: 0.25 }}
       className="group relative h-[335px] overflow-hidden rounded-2xl border border-white/10 bg-[#11111c] cursor-pointer"
