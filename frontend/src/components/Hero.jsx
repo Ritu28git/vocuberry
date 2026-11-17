@@ -7,7 +7,7 @@ import {
   Target,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import vLogo from "../assets/images/Vocuberry.png";
+import vLogo from "/images/Vocuberry.png";
 
 function Hero() {
   return (
